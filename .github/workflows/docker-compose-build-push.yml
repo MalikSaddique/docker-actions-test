@@ -27,18 +27,18 @@ jobs:
 
     - name: Build and push Docker images
       run: |
-        docker-compose -f docker-compose.yaml build app
+        docker compose -f docker-compose.yaml build app
         docker tag gold-track-app:latest $DOCKER_USERNAME/gold-track-app:latest
         docker push $DOCKER_USERNAME/gold-track-app:latest
 
-        docker-compose -f docker-compose.yaml build scraper
+        docker compose -f docker-compose.yaml build scraper
         docker tag gold-track-scraper:latest $DOCKER_USERNAME/gold-track-scraper:latest
         docker push $DOCKER_USERNAME/gold-track-scraper:latest
 
-        docker-compose -f docker-compose.yaml build websocket-server
+        docker compose -f docker-compose.yaml build websocket-server
         docker tag websocket-server:latest $DOCKER_USERNAME/websocket-server:latest
         docker push $DOCKER_USERNAME/websocket-server:latest
 
-        docker-compose -f docker-compose.yaml build frontend
+        docker compose -f docker-compose.yaml build frontend
         docker tag gold-track-frontend:latest $DOCKER_USERNAME/gold-track-frontend:latest
         docker push $DOCKER_USERNAME/gold-track-frontend:latest
