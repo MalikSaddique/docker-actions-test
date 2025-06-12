@@ -1,0 +1,45 @@
+name: Docker Compose Build and Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ DOCKER_USERNAME }}
+        password: ${{ DOCKER_PASSWORD }}
+
+    - name: Build and push Docker images
+      run: |
+        # Build and push the app service
+        docker-compose -f docker-compose.yaml build app
+        docker tag gold-track-app:latest DOCKER_USERNAME/gold-track-app:latest
+        docker push DOCKER_USERNAME/gold-track-app:latest
+
+        # Build and push the scraper service
+        docker-compose -f docker-compose.yaml build scraper
+        docker tag gold-track-scraper:latest DOCKER_USERNAME/gold-track-scraper:latest
+        docker push DOCKER_USERNAME/gold-track-scraper:latest
+
+        # Build and push the websocket-server service
+        docker-compose -f docker-compose.yaml build websocket-server
+        docker tag websocket-server:latest DOCKER_USERNAME/websocket-server:latest
+        docker push DOCKER_USERNAME/websocket-server:latest
+
+        # Build and push the frontend service
+        docker-compose -f docker-compose.yaml build frontend
+        docker tag gold-track-frontend:latest DOCKER_USERNAME/gold-track-frontend:latest
+        docker push DOCKER_USERNAME/gold-track-frontend:latest

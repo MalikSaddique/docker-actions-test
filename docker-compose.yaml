@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: ./src/backend/Dockerfile
+    container_name: gold-track-app
+    ports:
+      - "8005:8005"
+    volumes:
+      - .:/app
+    env_file:
+      - .env.yaml
+    depends_on:
+      - redis
+      - mongodb
+      - websocket-server
+      - nsqlookupd
+    networks:
+      - goldtrack_network
+
+  scraper:
+    build: 
+      context: ./scraper
+      dockerfile: ./Dockerfile
+    container_name: gold-track-scraper
+    depends_on:
+      - redis
+      - mongodb
+      - nsqlookupd
+      - nsqd
+    networks:
+      - goldtrack_network
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MONGODB_URL: mongodb://mongodb:27017
+      NSQ_HOST: nsqd
+      NSQ_PORT: 4150
+      NSQ_TOPIC: gold_price
+      NSQ_LOOKUPD_HTTP_ADDRESS: nsqlookupd:4161
+
+  websocket-server:
+    build:
+      context: .
+      dockerfile: ./src/websocket/Dockerfile
+    container_name: websocket-server
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - nsqlookupd
+    networks:
+      - goldtrack_network
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gold-track-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - goldtrack_network
+    depends_on:
+      - app
+      - websocket-server
+
+  redis:
+    image: redis:latest
+    container_name: goldtrack_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - goldtrack_network
+  
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: goldtrack_redis_commander
+    restart: always
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"  # Changed to expose port 8081 directly
+    depends_on:
+      - redis
+    networks:
+      - goldtrack_network
+  
+  nsqlookupd:
+    image: nsqio/nsq
+    container_name: goldtrack_nsqlookupd
+    command: /nsqlookupd
+    ports:
+      - "4160:4160"
+      - "4161:4161"
+    networks:
+      - goldtrack_network
+
+  nsqd:
+    image: nsqio/nsq
+    container_name: goldtrack_nsqd
+    command: /nsqd --lookupd-tcp-address=nsqlookupd:4160
+    ports:
+      - "4150:4150"
+      - "4151:4151"
+    depends_on:
+      - nsqlookupd
+    networks:
+      - goldtrack_network
+
+  nsqadmin:
+    image: nsqio/nsq
+    container_name: goldtrack_nsqadmin
+    command: /nsqadmin --lookupd-http-address=nsqlookupd:4161
+    ports:
+      - "4171:4171"
+    depends_on:
+      - nsqlookupd
+    networks:
+      - goldtrack_network
+
+  mongodb:
+    image: mongo:latest
+    container_name: goldtrack_mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    networks:
+      - goldtrack_network
+    # environment:
+    #   MONGO_INITDB_ROOT_USERNAME: test
+    #   MONGO_INITDB_ROOT_PASSWORD: test
+
+
+volumes:
+  pg_data:
+  redisdata:
+  mongodata:
+
+networks:
+  goldtrack_network:
